@@ -71,3 +71,17 @@
 | 预算与资源 | `--num_train_epochs`、`--max_length 16384`（token 预算）、`--gradient_accumulation_steps 2`、`--per_device_train_batch_size 1`、`--gradient_checkpointing true`、`--deepspeed zero3`（8 GPU 资源控制） | `--max_steps`、`--max_epochs`、`--early_stop_interval` |
 
 即：该脚本覆盖了坏数据兜底（`--strict false`）、更新范围（全参）、学习率、Epochs / Token 预算 / 资源预算；监督范围走默认策略（仅 response 部分计算损失），但**没有使用**多数据集混合、curriculum、loss_type/loss_scale 定制、逐消息 `loss` 标记、PEFT、冻结/LISA 等控制能力——这些控制项留给其他训练任务按需开启。
+
+## 7. RSI 子 Agent 职责映射
+
+为保证多个候选可以审计和组合，RSI 将上面的五个维度映射为互斥的职责边界：
+
+| 子 Agent | 负责内容 | 可修改产物 | 禁止越界 |
+| ---- | ---- | ---- | ---- |
+| DataAgent | 数据内容、质量、格式、离线筛选/修复/去重/拆条，以及 `strict`、`truncation_strategy`、列映射等数据预处理控制 | 配置的主 JSONL；训练脚本 `RSI_DATA` 区 | 不得修改逐消息 `loss`、数据组成/顺序、目标、优化或预算 |
+| RecipeAgent | 数据比例、采样、顺序、packing、难度分桶和分阶段 curriculum | `input/curriculum/*.jsonl`；训练脚本 `RSI_RECIPE` 区 | 桶内样本必须保持原内容，不得覆盖主 JSONL 或清洗/改写样本 |
+| ObjectiveAgent | Loss、mask、监督范围和 weighting | 训练脚本 `RSI_OBJECTIVE` 区；或只改主 JSONL 中逐消息 `loss` 字段 | 不得过滤、拆分、重排或改写样本其他内容 |
+| UpdateAgent | Optimizer、LR、scheduler、PEFT、冻结及 layer/module 更新范围 | 训练脚本 `RSI_UPDATE` 区 | 不得修改 batch/gradient accumulation、数据、目标或总预算 |
+| BudgetAgent | steps、epochs、token/sequence、batch/gradient accumulation、训练时间、checkpoint、显存和并行资源预算 | 训练脚本 `RSI_BUDGET` 区 | 不得修改数据、目标或优化策略 |
+
+脚本候选只能修改对应的 `RSI_*` 标记区。数据候选还会在 Docker 中执行语义验证：DataAgent 必须保留原有逐消息监督，ObjectiveAgent 只能改变 `loss`，RecipeAgent 的 curriculum 桶合计必须与基线数据逐行守恒。
