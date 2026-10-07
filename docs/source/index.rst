@@ -18,6 +18,9 @@ Swift DOCUMENTATION
    :caption: Instruction
 
    Instruction/Command-line-parameters.md
+   Instruction/Training-controls.md
+   Instruction/Curriculum.md
+   Instruction/Custom-data-cleaning.md
    Instruction/Pre-training-and-Fine-tuning.md
    Instruction/GRPO/index.rst
    Instruction/Distillation.md
