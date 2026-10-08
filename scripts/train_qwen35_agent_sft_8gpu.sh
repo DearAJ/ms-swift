@@ -4,16 +4,19 @@
 # Lines starting with `# --xxx` are optional knobs: un-comment them to enable.
 #
 # Usage:
-#   MODEL=/path/to/Qwen3.5-9B ./scripts/train_qwen35_agent_sft_8gpu.sh
-#   MODEL=/path/to/Qwen3.5-9B ./scripts/train_qwen35_agent_sft_8gpu.sh --data input/tb2_sft_v1.jsonl
-#   # Default data: ms-swift/input/tb2_sft.jsonl; default output: ms-swift/output/agent-sft
-#   # Override example: OUTPUT_DIR=output/exp2 ./scripts/train_qwen35_agent_sft_8gpu.sh other.jsonl
+#   ./scripts/train_qwen35_agent_sft_8gpu.sh \
+#     --model-input-dir output/rsi-qwen35-9b/v1-20260922-113401/last-checkpoint \
+#     --model-output-dir output/rsi-qwen35-9b/v2-$(date +%Y%m%d-%H%M%S) \
+#     --data input/tb2_sft_v2.jsonl
+# MODEL and OUTPUT_DIR remain supported for backwards compatibility.
 set -euo pipefail
 
 SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_DIR="$(cd -- "${SCRIPT_DIR}/.." && pwd)"   # ms-swift root
 
 DATASET_SRC="${PROJECT_DIR}/input/tb2_sft.jsonl"
+MODEL_INPUT_DIR="${MODEL_INPUT_DIR:-${MODEL:-}}"
+MODEL_OUTPUT_DIR="${MODEL_OUTPUT_DIR:-${OUTPUT_DIR:-${PROJECT_DIR}/output/agent-sft}}"
 while (( $# > 0 )); do
     case "$1" in
         --data)
@@ -25,8 +28,26 @@ while (( $# > 0 )); do
             DATASET_SRC="${1#--data=}"
             shift
             ;;
+        --model-input-dir)
+            (( $# >= 2 )) || { echo "--model-input-dir requires a directory" >&2; exit 2; }
+            MODEL_INPUT_DIR="$2"
+            shift 2
+            ;;
+        --model-input-dir=*)
+            MODEL_INPUT_DIR="${1#--model-input-dir=}"
+            shift
+            ;;
+        --model-output-dir)
+            (( $# >= 2 )) || { echo "--model-output-dir requires a directory" >&2; exit 2; }
+            MODEL_OUTPUT_DIR="$2"
+            shift 2
+            ;;
+        --model-output-dir=*)
+            MODEL_OUTPUT_DIR="${1#--model-output-dir=}"
+            shift
+            ;;
         --help|-h)
-            echo "Usage: $0 [--data PATH | PATH]"
+            echo "Usage: $0 [--data PATH | PATH] --model-input-dir DIR --model-output-dir DIR"
             exit 0
             ;;
         --*)
@@ -40,8 +61,8 @@ while (( $# > 0 )); do
             ;;
     esac
 done
-MODEL="${MODEL:?Set MODEL to the local model directory}"
-OUTPUT_DIR="${OUTPUT_DIR:-${PROJECT_DIR}/output/agent-sft}"
+MODEL="${MODEL_INPUT_DIR:?Pass --model-input-dir DIR or set MODEL_INPUT_DIR/MODEL}"
+OUTPUT_DIR="${MODEL_OUTPUT_DIR}"
 
 # The small set of tunable training defaults. Override any at launch time.
 MAX_LENGTH="${MAX_LENGTH:-16384}"
