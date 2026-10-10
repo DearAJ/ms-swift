@@ -16,7 +16,7 @@ PROJECT_DIR="$(cd -- "${SCRIPT_DIR}/.." && pwd)"   # ms-swift root
 
 DATASET_SRC="${PROJECT_DIR}/input/tb2_sft.jsonl"
 MODEL_INPUT_DIR="${MODEL_INPUT_DIR:-${MODEL:-}}"
-MODEL_OUTPUT_DIR="${MODEL_OUTPUT_DIR:-${OUTPUT_DIR:-${PROJECT_DIR}/output/agent-sft}}"
+MODEL_OUTPUT_DIR="${MODEL_OUTPUT_DIR:-${OUTPUT_DIR:-${PROJECT_DIR}/output/rsi-qwen35-9b/v2-$(date +%Y%m%d-%H%M%S)}}"
 while (( $# > 0 )); do
     case "$1" in
         --data)
