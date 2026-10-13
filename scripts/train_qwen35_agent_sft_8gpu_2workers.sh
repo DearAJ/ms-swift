@@ -12,14 +12,14 @@
 #   ./scripts/train_qwen35_agent_sft_8gpu_2workers.sh \
 #     --model-input-dir /path/to/Qwen3.5-27B \
 #     --model-output-dir output/rsi-qwen35-27b/v1 \
-#     --data input/tb2_sft_v2.jsonl
+#     --data input/tb4_sft.jsonl
 # MODEL and OUTPUT_DIR remain supported for backwards compatibility.
 set -euo pipefail
 
 SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_DIR="$(cd -- "${SCRIPT_DIR}/.." && pwd)"   # ms-swift root
 
-DATASET_SRC="${PROJECT_DIR}/input/tb2_sft.jsonl"
+DATASET_SRC="${PROJECT_DIR}/input/tb4_sft.jsonl"
 MODEL_INPUT_DIR="${MODEL_INPUT_DIR:-${MODEL:-}}"
 MODEL_OUTPUT_DIR="${MODEL_OUTPUT_DIR:-${OUTPUT_DIR:-${PROJECT_DIR}/output/rsi-qwen35-27b/v1}}"
 while (( $# > 0 )); do
@@ -103,7 +103,7 @@ CURRICULUM_STAGES="${CURRICULUM_STAGES:-}"    # Comma-separated easy,medium,hard
 
 # Add entries here to mix multiple datasets (used with --interleave_prob below).
 DATASETS=("${DATASET_SRC}")
-# DATASETS+=("data/tb2_math.jsonl#2000")                    # Local file, first 2,000 rows
+# DATASETS+=("data/tb4_math.jsonl#2000")                    # Local file, first 2,000 rows
 # DATASETS+=("hf::meta-llama/Llama-3.2-1B-Instruct#1000")  # Hugging Face dataset, first 1,000 rows
 
 for ds in "${DATASETS[@]}"; do
