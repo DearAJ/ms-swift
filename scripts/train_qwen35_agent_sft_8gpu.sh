@@ -6,7 +6,7 @@
 # Usage:
 #   ./scripts/train_qwen35_agent_sft_8gpu.sh \
 #     --model-input-dir output/rsi-qwen35-9b/v1-20260922-113401/last-checkpoint \
-#     --model-output-dir output/rsi-qwen35-9b/v2-$(date +%Y%m%d-%H%M%S) \
+#     --model-output-dir output/rsi-qwen35-9b/v2\
 #     --data input/tb2_sft_v2.jsonl
 # MODEL and OUTPUT_DIR remain supported for backwards compatibility.
 set -euo pipefail
@@ -16,7 +16,7 @@ PROJECT_DIR="$(cd -- "${SCRIPT_DIR}/.." && pwd)"   # ms-swift root
 
 DATASET_SRC="${PROJECT_DIR}/input/tb2_sft.jsonl"
 MODEL_INPUT_DIR="${MODEL_INPUT_DIR:-${MODEL:-}}"
-MODEL_OUTPUT_DIR="${MODEL_OUTPUT_DIR:-${OUTPUT_DIR:-${PROJECT_DIR}/output/rsi-qwen35-9b/v2-$(date +%Y%m%d-%H%M%S)}}"
+MODEL_OUTPUT_DIR="${MODEL_OUTPUT_DIR:-${OUTPUT_DIR:-${PROJECT_DIR}/output/rsi-qwen35-9b/v1}}"
 while (( $# > 0 )); do
     case "$1" in
         --data)
@@ -74,7 +74,7 @@ CUDA_VISIBLE_DEVICES="${CUDA_VISIBLE_DEVICES:-0,1,2,3,4,5,6,7}"
 SWANLAB_PROJECT="${SWANLAB_PROJECT:-qwen35-agent-sft}"
 SWANLAB_EXP_NAME="${SWANLAB_EXP_NAME:-agent-sft-$(date +%Y%m%d-%H%M%S)}"
 SWANLAB_MODE="${SWANLAB_MODE:-cloud}"
-SWANLAB_API_KEY="${SWANLAB_API_KEY:-}"
+SWANLAB_API_KEY="${SWANLAB_API_KEY:-XLi4DoFQuZtgS8WBJWFMM}" 
 export CUDA_VISIBLE_DEVICES
 export NPROC_PER_NODE="${NPROC_PER_NODE:-$(tr ',' '\n' <<< "${CUDA_VISIBLE_DEVICES}" | wc -l)}"
 export PYTORCH_CUDA_ALLOC_CONF="${PYTORCH_CUDA_ALLOC_CONF:-expandable_segments:True}"
@@ -100,21 +100,6 @@ for ds in "${DATASETS[@]}"; do
 done
 [[ -f "${MODEL}/config.json" ]] || { echo "Invalid model directory: ${MODEL}" >&2; exit 1; }
 
-# Dimension 2: data mixture, sampling, order, curriculum, and packing
-MIX_ARGS=(
-    --split_dataset_ratio 0.01          # Randomly reserve 1% for validation
-    --data_seed 42                      # Fixed shuffle seed for reproducibility
-    --dataset_shuffle true              # Set false to preserve curriculum ordering
-    # --interleave_prob 0.3 0.7         # One mixing probability per dataset
-    # --stopping_strategy first_exhausted  # first_exhausted or all_exhausted
-    # --shuffle_buffer_size 1000        # Shuffle window in streaming mode
-    # --group_by_length true            # Group similar lengths to reduce padding
-    # --packing true --packing_length 16384  # Pack multiple samples into one sequence
-    # --padding_free true               # Remove padding when supported by the template
-    # --streaming true                  # Streaming requires --max_steps
-)
-# RSI_RECIPE_END
-
 SWANLAB_ARGS=(
     --report_to swanlab
     --swanlab_project "${SWANLAB_PROJECT}"
@@ -132,7 +117,7 @@ fi
 DATA_ARGS=(
     --dataset "${DATASETS[@]}"          # Sources: JSONL, CSV, directory, or Hugging Face dataset
     --strict false                      # false drops invalid rows with bounded logging; true exits on error
-    --truncation_strategy delete        # Overlength handling: delete, left, right, or split
+    --truncation_strategy left          # Overlength handling: left keeps the most recent turns (agent-friendly);
     # --columns '{"text1": "query", "text2": "response"}'  # Map source columns to the standard schema
     # --custom_dataset_info data/dataset_info.json          # Register a custom dataset schema
     # --cached_dataset true              # Consume a cache produced by `swift export --to_cached_dataset`
@@ -145,6 +130,23 @@ DATA_ARGS=(
 #   2. Use a custom callback to change data between stages.
 #   3. Run multiple stages and resume each stage from the prior checkpoint.
 # See docs/source/Instruction/Curriculum.en.md for deterministic difficulty buckets.
+
+# ============================================================
+# Dimension 2: data mixture, sampling, order, curriculum, and packing
+# ============================================================
+MIX_ARGS=(
+    --split_dataset_ratio 0.01          # Randomly reserve 1% for validation
+    --data_seed 42                      # Fixed shuffle seed for reproducibility
+    --dataset_shuffle true              # Set false to preserve curriculum ordering
+    # --interleave_prob 0.3 0.7         # One mixing probability per dataset
+    # --stopping_strategy first_exhausted  # first_exhausted or all_exhausted
+    # --shuffle_buffer_size 1000        # Shuffle window in streaming mode
+    # --group_by_length true            # Group similar lengths to reduce padding
+    # --packing true --packing_length 16384  # Pack multiple samples into one sequence
+    # --padding_free true               # Remove padding when supported by the template
+    # --streaming true                  # Streaming requires --max_steps
+)
+# RSI_RECIPE_END
 
 # ============================================================
 # Dimension 3: loss, masking, supervision scope, and weighting
